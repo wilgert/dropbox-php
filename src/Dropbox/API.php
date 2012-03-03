@@ -9,7 +9,6 @@
  * @license http://code.google.com/p/dropbox-php/wiki/License MIT
  */
 class Dropbox_API {
-
     /**
      * Sandbox root-path
      */
@@ -19,12 +18,12 @@ class Dropbox_API {
      * Dropbox root-path
      */
     const ROOT_DROPBOX = 'dropbox';
-    
+
     /**
      * API URl
      */
     protected $api_url = 'https://api.dropbox.com/1/';
-    
+
     /**
      * Content API URl
      */
@@ -36,14 +35,13 @@ class Dropbox_API {
      * @var Dropbox_OAuth
      */
     protected $oauth;
-    
+
     /**
      * Default root-path, this will most likely be 'sandbox' or 'dropbox' 
      * 
      * @var string 
      */
     protected $root;
-    protected $useSSL;
 
     /**
      * Constructor 
@@ -51,16 +49,33 @@ class Dropbox_API {
      * @param Dropbox_OAuth Dropbox_Auth object
      * @param string $root default root path (sandbox or dropbox) 
      */
-    public function __construct(Dropbox_OAuth $oauth, $root = self::ROOT_DROPBOX, $useSSL = true) {
+    public function __construct(Dropbox_OAuth_Wordpress $oauth, $root = self::ROOT_DROPBOX, $useSSL = true) {
 
         $this->oauth = $oauth;
         $this->root = $root;
         $this->useSSL = $useSSL;
-        if (!$this->useSSL)
-        {
+        if (!$this->useSSL) {
             throw new Dropbox_Exception('Dropbox REST API now requires that all requests use SSL');
         }
+    }
 
+    /**
+     * Returns OAuth tokens based on an email address and passwords
+     *
+     * This can be used to bypass the regular oauth workflow.
+     *
+     * This method returns an array with 2 elements:
+     *   * token
+     *   * secret
+     *
+     * @param string $email 
+     * @param string $password 
+     * @deprecated This method is no longer supported
+     * @return array 
+     */
+    public function getToken($email, $password) {
+
+        throw new Dropbox_Exception('This API method is deprecated as of the version 1 API');
     }
 
     /**
@@ -71,8 +86,22 @@ class Dropbox_API {
     public function getAccountInfo() {
 
         $data = $this->oauth->fetch($this->api_url . 'account/info');
-        return json_decode($data['body'],true);
+        return json_decode($data['body'], true);
+    }
 
+    /**
+     * Creates a new Dropbox account
+     *
+     * @param string $email 
+     * @param string $first_name 
+     * @param string $last_name 
+     * @param string $password 
+     * @deprecated This method is no longer supported
+     * @return bool 
+     */
+    public function createAccount($email, $first_name, $last_name, $password) {
+
+        throw new Dropbox_Exception('This API method is deprecated as of the version 1 API');
     }
 
     /**
@@ -84,11 +113,11 @@ class Dropbox_API {
      */
     public function getFile($path = '', $root = null) {
 
-        if (is_null($root)) $root = $this->root;
-        $path = str_replace(array('%2F','~'), array('/','%7E'), rawurlencode($path));
-        $result = $this->oauth->fetch($this->api_content_url . 'files/' . $root . '/' . ltrim($path,'/'));
+        if (is_null($root))
+            $root = $this->root;
+        $path = str_replace(array('%2F', '~'), array('/', '%7E'), rawurlencode($path));
+        $result = $this->oauth->fetch($this->api_content_url . 'files/' . $root . '/' . ltrim($path, '/'));
         return $result['body'];
-
     }
 
     /**
@@ -104,25 +133,25 @@ class Dropbox_API {
         $directory = dirname($path);
         $filename = basename($path);
 
-        if($directory==='.') $directory = '';
-        if (is_null($root)) $root = $this->root;
+        if ($directory === '.')
+            $directory = '';
+        if (is_null($root))
+            $root = $this->root;
 
         if (is_string($file)) {
 
-            $file = fopen($file,'r');
-
+            $file = fopen($file, 'r');
         } elseif (!is_resource($file)) {
             throw new Dropbox_Exception('File must be a file-resource or a string');
         }
-        $result=$this->multipartFetch($this->api_content_url . 'files/' . 
-                $root . '/' . trim($directory,'/'), $file, $filename);
-        
-        if(!isset($result["httpStatus"]) || $result["httpStatus"] != 200) 
+        $result = $this->multipartFetch($this->api_content_url . 'files/' .
+                $root . '/' . trim($directory, '/'), $file, $filename);
+
+        if (!isset($result["httpStatus"]) || $result["httpStatus"] != 200)
             throw new Dropbox_Exception("Uploading file to Dropbox failed");
 
         return true;
     }
-
 
     /**
      * Copies a file or directory from one location to another 
@@ -136,11 +165,11 @@ class Dropbox_API {
      */
     public function copy($from, $to, $root = null) {
 
-        if (is_null($root)) $root = $this->root;
+        if (is_null($root))
+            $root = $this->root;
         $response = $this->oauth->fetch($this->api_url . 'fileops/copy', array('from_path' => $from, 'to_path' => $to, 'root' => $root));
 
-        return json_decode($response['body'],true);
-
+        return json_decode($response['body'], true);
     }
 
     /**
@@ -154,14 +183,14 @@ class Dropbox_API {
      */
     public function createFolder($path, $root = null) {
 
-        if (is_null($root)) $root = $this->root;
+        if (is_null($root))
+            $root = $this->root;
 
         // Making sure the path starts with a /
-        $path = '/' . ltrim($path,'/');
+        $path = '/' . ltrim($path, '/');
 
-        $response = $this->oauth->fetch($this->api_url . 'fileops/create_folder', array('path' => $path, 'root' => $root),'POST');
-        return json_decode($response['body'],true);
-
+        $response = $this->oauth->fetch($this->api_url . 'fileops/create_folder', array('path' => $path, 'root' => $root), 'POST');
+        return json_decode($response['body'], true);
     }
 
     /**
@@ -175,10 +204,10 @@ class Dropbox_API {
      */
     public function delete($path, $root = null) {
 
-        if (is_null($root)) $root = $this->root;
+        if (is_null($root))
+            $root = $this->root;
         $response = $this->oauth->fetch($this->api_url . 'fileops/delete', array('path' => $path, 'root' => $root));
         return json_decode($response['body']);
-
     }
 
     /**
@@ -193,11 +222,34 @@ class Dropbox_API {
      */
     public function move($from, $to, $root = null) {
 
-        if (is_null($root)) $root = $this->root;
+        if (is_null($root))
+            $root = $this->root;
         $response = $this->oauth->fetch($this->api_url . 'fileops/move', array('from_path' => rawurldecode($from), 'to_path' => rawurldecode($to), 'root' => $root));
 
-        return json_decode($response['body'],true);
+        return json_decode($response['body'], true);
+    }
 
+    /**
+     * Returns a list of links for a directory
+     *
+     * The links can be used to securely open files throug a browser. The links are cookie protected
+     * so a user is asked to login if there's no valid session cookie.
+     *
+     * @param string $path Path to directory or file
+     * @param string $root Use this to override the default root path (sandbox/dropbox)
+     * @deprecated This method is no longer supported
+     * @return array 
+     */
+    public function getLinks($path, $root = null) {
+
+        throw new Dropbox_Exception('This API method is currently broken, and dropbox documentation about this is no longer online. Please ask Dropbox support if you really need this.');
+
+        /*
+          if (is_null($root)) $root = $this->root;
+
+          $response = $this->oauth->fetch($this->api_url . 'links/' . $root . '/' . ltrim($path,'/'));
+          return json_decode($response,true);
+         */
     }
 
     /**
@@ -212,17 +264,43 @@ class Dropbox_API {
      */
     public function getMetaData($path, $list = true, $hash = null, $fileLimit = null, $root = null) {
 
-        if (is_null($root)) $root = $this->root;
+        if (is_null($root))
+            $root = $this->root;
 
         $args = array(
             'list' => $list,
         );
 
-        if (!is_null($hash)) $args['hash'] = $hash; 
-        if (!is_null($fileLimit)) $args['file_limit'] = $fileLimit; 
+        if (!is_null($hash))
+            $args['hash'] = $hash;
+        if (!is_null($fileLimit))
+            $args['file_limit'] = $fileLimit;
 
-        $path = str_replace(array('%2F','~'), array('/','%7E'), rawurlencode($path));
-        $response = $this->oauth->fetch($this->api_url . 'metadata/' . $root . '/' . ltrim($path,'/'), $args);
+        $path = str_replace(array('%2F', '~'), array('/', '%7E'), rawurlencode($path));
+        $response = $this->oauth->fetch($this->api_url . 'metadata/' . $root . '/' . ltrim($path, '/'), $args);
+
+        /* 304 is not modified */
+        if ($response['httpStatus'] == 304) {
+            return true;
+        } else {
+            return json_decode($response['body'], true);
+        }
+    }
+    
+     /**
+     * Returns Delta information on the state of the file & folder tree
+     * 
+     * @param string $cursor Cursor previously received to compare with
+     */
+    public function getDelta($cursor = null) {
+
+        if (is_null($root)) $root = $this->root;
+        
+        $args = Array();
+
+        if (!is_null($cursor)) $args['$cursor'] = $cursor;
+
+        $response = $this->oauth->fetch($this->api_url . 'delta_beta2/', $args);
 
         /* 304 is not modified */
         if ($response['httpStatus']==304) {
@@ -243,11 +321,11 @@ class Dropbox_API {
      */
     public function getThumbnail($path, $size = 'small', $root = null) {
 
-        if (is_null($root)) $root = $this->root;
-        $response = $this->oauth->fetch($this->api_content_url . 'thumbnails/' . $root . '/' . ltrim($path,'/'),array('size' => $size));
+        if (is_null($root))
+            $root = $this->root;
+        $response = $this->oauth->fetch($this->api_content_url . 'thumbnails/' . $root . '/' . ltrim($path, '/'), array('size' => $size));
 
         return $response['body'];
-
     }
 
     /**
@@ -266,8 +344,8 @@ class Dropbox_API {
             'Content-Type' => 'multipart/form-data; boundary=' . $boundary,
         );
 
-        $body="--" . $boundary . "\r\n";
-        $body.="Content-Disposition: form-data; name=file; filename=".rawurldecode($filename)."\r\n";
+        $body = "--" . $boundary . "\r\n";
+        $body.="Content-Disposition: form-data; name=file; filename=" . rawurldecode($filename) . "\r\n";
         $body.="Content-type: application/octet-stream\r\n";
         $body.="\r\n";
         $body.=stream_get_contents($file);
@@ -279,44 +357,17 @@ class Dropbox_API {
         $uri.='?file=' . $filename;
 
         return $this->oauth->fetch($uri, $body, 'POST', $headers);
-
     }
-	
-	
-	/**
-     * Search
-     *
-     * Returns metadata for all files and folders that match the search query.
-     *
-	 * @added by: diszo.sasil 
-	 *
-     * @param string $query	 
-     * @param string $root Use this to override the default root path (sandbox/dropbox)
-	 * @param string $path
-     * @return array
-     */
-	public function search($query = '', $root = null, $path = ''){
-		if (is_null($root)) $root = $this->root;
-		if(!empty($path)){
-			$path = str_replace(array('%2F','~'), array('/','%7E'), rawurlencode($path));
-		}
-        $response = $this->oauth->fetch($this->api_url . 'search/' . $root . '/' . ltrim($path,'/'),array('query' => $query));
-        return json_decode($response['body'],true);
-	}
 
-    /**
-     * Creates and returns a shareable link to files or folders.
-     * 
-     * Note: Links created by the /shares API call expire after thirty days.
-     * 
-     * @param type $url
-     * @param type $root
-     * @return type 
-     */
-    public function share($url, $root = null) {
-        if (is_null($root)) $root = $this->root;
-        $response = $this->oauth->fetch($this->api_url.  'shares/'. $root . '/' . ltrim($url, '/'));
-        return json_decode($response['body'],true);
-
+    public function search($query, $path = '', $limit = 1000, $deleted = false) {
+        $call = $this->api_content_url . 'search/' . $this->root . '/' . ltrim($path,'/');
+        $params = array(
+            'query' => $query,
+            'file_limit' => ($limit < 1) ? 1 : (($limit > 1000) ? 1000 : (int) $limit),
+            'include_deleted' => (int) $deleted,
+        );
+        $response = $this->oauth->fetch($call, $params, 'GET' );
+        return $response['body'];
     }
+
 }
